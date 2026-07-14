@@ -1,0 +1,4 @@
+﻿toychain.exe
+chain.json
+*.json
+!demo.json
