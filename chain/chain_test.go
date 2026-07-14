@@ -27,8 +27,10 @@ func TestNewChain_HasGenesis(t *testing.T) {
 // nonce must reproduce that exact hash (proving the nonce/hash pair is
 // self-consistent, not just found-then-discarded).
 
-/* estMineBlock_MeetsDifficultyTarget
-The Goal: Prove that the Proof-of-Work mining algorithm isn't faking it, and actually 
+/*
+	estMineBlock_MeetsDifficultyTarget
+
+The Goal: Prove that the Proof-of-Work mining algorithm isn't faking it, and actually
 respects the difficulty rules.
 
 How it works:
@@ -36,7 +38,7 @@ How it works:
 It sets a strict difficulty = 3 and creates a chain.
 It asks the chain to mine a new block containing one faucet transaction.
 Check 1 (The Zeros): It looks at the resulting Hash. If it does not start with "000" (three zeros), the test fails.
-Check 2 (The Math Proof): It takes the Nonce the miner claims to have found and runs it back through the CalculateHash() function. 
+Check 2 (The Math Proof): It takes the Nonce the miner claims to have found and runs it back through the CalculateHash() function.
 If the recomputed hash doesn't perfectly match the stored hash, it means the mining function is broken or lying.
 Check 3 (The Effort): It ensures the loop ran at least once (result.Attempts < 1).
 
@@ -70,16 +72,19 @@ Attempt 3: Nonce is 55 ➔ Hash is 0a11fc... ❌ (Fails, only one zero)
 
 Attempt 4: Nonce is 8,923 ➔ Hash is 000b41... ✅ WINNER!
 
-In that example, the winning Nonce was 8,923. The length of that number didn't matter. 
+In that example, the winning Nonce was 8,923. The length of that number didn't matter.
 What mattered was that throwing 8,923 into the hashing algorithm magically produced a Hash that started with three zeros (000).
 */
 func TestMineBlock_MeetsDifficultyTarget(t *testing.T) {
 	const difficulty = 3
 	bc := New(difficulty)
 
-	result := bc.MineBlock([]ledger.Transaction{
+	result, err := bc.MineBlock([]ledger.Transaction{
 		{Sender: "", Recipient: "alice", Amount: 100}, // faucet
 	})
+	if err != nil {
+		t.Fatalf("unexpected error mining block: %v", err)
+	}
 
 	target := strings.Repeat("0", difficulty)
 	if !strings.HasPrefix(result.Block.Hash, target) {
@@ -106,7 +111,10 @@ func TestMineBlock_LinksToPrevious(t *testing.T) {
 	bc := New(1)
 	genesisHash := bc.Latest().Hash
 
-	result := bc.MineBlock(nil)
+	result, err := bc.MineBlock(nil)
+	if err != nil {
+		t.Fatalf("unexpected error mining block: %v", err)
+	}
 
 	if result.Block.PrevHash != genesisHash {
 		t.Fatalf("expected new block's PrevHash to equal genesis hash %s, got %s",

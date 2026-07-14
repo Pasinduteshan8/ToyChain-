@@ -2,25 +2,28 @@
 // chain/validate.go — Chain Validation & Tamper Detection (FR-6).
 //
 // CONCEPT: Chain Validation (The Security Auditor)
-//   Validation is the blockchain's immune system. It scans the ENTIRE chain
-//   from genesis to tip, checking that nobody edited an old transaction,
-//   forged a hash, or broke the chain's structure.
 //
-//   WHY THIS WORKS: Remember the "avalanche effect" of SHA-256 — change
-//   one comma in a block, and its hash changes COMPLETELY. But the NEXT
-//   block stores the original hash in its PrevHash field. So tampering
-//   with Block 5 causes a mismatch at Block 6, which breaks Block 7, etc.
-//   The entire chain unravels from the point of tampering, and validation
-//   catches it instantly.
+//	Validation is the blockchain's immune system. It scans the ENTIRE chain
+//	from genesis to tip, checking that nobody edited an old transaction,
+//	forged a hash, or broke the chain's structure.
+//
+//	WHY THIS WORKS: Remember the "avalanche effect" of SHA-256 — change
+//	one comma in a block, and its hash changes COMPLETELY. But the NEXT
+//	block stores the original hash in its PrevHash field. So tampering
+//	with Block 5 causes a mismatch at Block 6, which breaks Block 7, etc.
+//	The entire chain unravels from the point of tampering, and validation
+//	catches it instantly.
 //
 // FR-6 (Chain Validation):
-//   The Validate() function checks five strict rules on every block:
-//   1. Recomputed hash matches the stored hash (catches data tampering).
-//   2. PrevHash matches the previous block's actual hash (catches link breaks).
-//   3. Hash satisfies the Proof-of-Work difficulty target (catches forged blocks).
-//   4. Heights are perfectly sequential (0, 1, 2, 3...).
-//   5. Timestamps only move forward (no time travel).
-//   It stops at the FIRST failure and reports exactly which block broke.
+//
+//	The Validate() function checks five strict rules on every block:
+//	1. Recomputed hash matches the stored hash (catches data tampering).
+//	2. PrevHash matches the previous block's actual hash (catches link breaks).
+//	3. Hash satisfies the Proof-of-Work difficulty target (catches forged blocks).
+//	4. Heights are perfectly sequential (0, 1, 2, 3...).
+//	5. Timestamps only move forward (no time travel).
+//	It stops at the FIRST failure and reports exactly which block broke.
+//
 // =============================================================================
 package chain
 
@@ -29,6 +32,7 @@ import (
 	"strings"
 
 	"toychain/block"
+	"toychain/ledger"
 )
 
 // ValidationResult reports whether the chain is valid, and if not, exactly
@@ -36,11 +40,12 @@ import (
 // on failure").
 //
 // CONCEPT: Why we report the FIRST failure only
-//   Once a chain link is broken, everything after it is meaningless — a
-//   broken link at Block 5 makes Blocks 6, 7, 8... all invalid by
-//   extension. So we stop at the first failure and tell the user exactly
-//   which block failed and why, rather than flooding them with cascading
-//   errors.
+//
+//	Once a chain link is broken, everything after it is meaningless — a
+//	broken link at Block 5 makes Blocks 6, 7, 8... all invalid by
+//	extension. So we stop at the first failure and tell the user exactly
+//	which block failed and why, rather than flooding them with cascading
+//	errors.
 type ValidationResult struct {
 	Valid        bool
 	FailedHeight int    // -1 if Valid
@@ -52,38 +57,43 @@ type ValidationResult struct {
 //
 // CONCEPT: The Five Checks Explained
 //
-//   CHECK 1 — Recomputed Hash vs. Stored Hash (TAMPER DETECTION):
-//     We take the block's stored fields (Height, Timestamp, Transactions,
-//     PrevHash, Nonce) and re-run them through SHA-256. If the result
-//     doesn't match the stored Hash, it means SOMETHING in the block was
-//     changed AFTER mining. This is the primary tamper-detection mechanism.
+//	CHECK 1 — Recomputed Hash vs. Stored Hash (TAMPER DETECTION):
+//	  We take the block's stored fields (Height, Timestamp, Transactions,
+//	  PrevHash, Nonce) and re-run them through SHA-256. If the result
+//	  doesn't match the stored Hash, it means SOMETHING in the block was
+//	  changed AFTER mining. This is the primary tamper-detection mechanism.
 //
-//     Real-world analogy: It's like re-weighing a sealed package. If the
-//     weight doesn't match what's on the label, someone opened it.
+//	  Real-world analogy: It's like re-weighing a sealed package. If the
+//	  weight doesn't match what's on the label, someone opened it.
 //
-//   CHECK 2 — PrevHash Link Integrity (CHAIN CONTINUITY):
-//     block[i].PrevHash must exactly equal block[i-1].Hash. This is what
-//     makes the chain a CHAIN. Even if a tampered block's own stored hash
-//     were somehow fixed to look self-consistent, the next block's PrevHash
-//     still points at the ORIGINAL hash, catching the tampering.
+//	CHECK 2 — PrevHash Link Integrity (CHAIN CONTINUITY):
+//	  block[i].PrevHash must exactly equal block[i-1].Hash. This is what
+//	  makes the chain a CHAIN. Even if a tampered block's own stored hash
+//	  were somehow fixed to look self-consistent, the next block's PrevHash
+//	  still points at the ORIGINAL hash, catching the tampering.
 //
-//     Real-world analogy: Each page in a notarised ledger has a reference
-//     number to the previous page. If someone rips out page 5 and replaces
-//     it, page 6 still references the original page 5's number.
+//	  Real-world analogy: Each page in a notarised ledger has a reference
+//	  number to the previous page. If someone rips out page 5 and replaces
+//	  it, page 6 still references the original page 5's number.
 //
-//   CHECK 3 — Proof-of-Work Compliance (MINING LEGITIMACY):
-//     block[i].Hash must start with at least `Difficulty` leading zeros.
-//     This ensures the block was actually mined (not just fabricated with
-//     a random hash). Genesis is exempt because it's hardcoded, not mined.
+//	CHECK 3 — Proof-of-Work Compliance (MINING LEGITIMACY):
+//	  block[i].Hash must start with at least `Difficulty` leading zeros.
+//	  This ensures the block was actually mined (not just fabricated with
+//	  a random hash). Genesis is exempt because it's hardcoded, not mined.
 //
-//   CHECK 4 — Height & Timestamp Consistency (STRUCTURAL INTEGRITY):
-//     Heights must increase by exactly 1 (0, 1, 2, 3...) — no gaps,
-//     no duplicates, no going backwards. Timestamps must be non-decreasing
-//     (a block can't claim to be older than its predecessor).
+//	CHECK 4 — Height & Timestamp Consistency (STRUCTURAL INTEGRITY):
+//	  Heights must increase by exactly 1 (0, 1, 2, 3...) — no gaps,
+//	  no duplicates, no going backwards. Timestamps must be non-decreasing
+//	  (a block can't claim to be older than its predecessor).
 func (bc *Blockchain) Validate() ValidationResult {
 	// Build the PoW target string: e.g., Difficulty 3 → "000".
 	// Every non-genesis block's hash must start with this prefix.
 	target := strings.Repeat("0", bc.Difficulty)
+
+	// Keep a running ledger to validate transactions (FR-4 compliance during validation).
+	// Without this, someone could inject an illegal transaction directly into
+	// the data file and Validate() would miss it.
+	balances := ledger.NewBalances()
 
 	for i, b := range bc.Blocks {
 		// =====================================================================
@@ -167,6 +177,21 @@ func (bc *Blockchain) Validate() ValidationResult {
 				Reason: fmt.Sprintf(
 					"block %d: timestamp %d is earlier than previous block's timestamp %d",
 					b.Height, b.Timestamp, prev.Timestamp),
+			}
+		}
+
+		// =====================================================================
+		// CHECK 5: LEDGER RULES — Replay the block's transactions.
+		// Even if the block itself is structurally sound (valid hashes), its
+		// transactions must still obey the laws of physics (no negative amounts,
+		// no overdrafts). We Apply() every transaction to our running balance sheet.
+		// =====================================================================
+		for _, tx := range b.Transactions {
+			if err := balances.Apply(tx); err != nil {
+				return ValidationResult{
+					Valid: false, FailedHeight: b.Height,
+					Reason: fmt.Sprintf("block %d contains invalid transaction: %v", b.Height, err),
+				}
 			}
 		}
 	}

@@ -2,39 +2,43 @@
 // cli/cli.go — The Command-Line Interface (FR-7, FR-9).
 //
 // CONCEPT: Command-Line Interface (FR-7)
-//   The CLI is the user's ONLY way to interact with the blockchain (no web
-//   UI allowed). It uses Go's os.Args to receive commands from the terminal
-//   and a switch statement to route each command to the correct function:
 //
-//     add-tx   → Add a transaction to the pending pool (mempool)
-//     mine     → Mine a block from pending transactions (runs PoW)
-//     print    → Display every block in the chain
-//     validate → Run the security auditor on the full chain
-//     balances → Show current account balances derived from the chain
+//	The CLI is the user's ONLY way to interact with the blockchain (no web
+//	UI allowed). It uses Go's os.Args to receive commands from the terminal
+//	and a switch statement to route each command to the correct function:
+//
+//	  add-tx   → Add a transaction to the pending pool (mempool)
+//	  mine     → Mine a block from pending transactions (runs PoW)
+//	  print    → Display every block in the chain
+//	  validate → Run the security auditor on the full chain
+//	  balances → Show current account balances derived from the chain
 //
 // CONCEPT: Configurable Parameters (FR-9)
-//   Instead of hardcoding mining rules into the code, we use Go's standard
-//   "flag" package to let the user control parameters from the terminal:
 //
-//     -difficulty 4   → Set PoW to require 4 leading zeros (harder mining)
-//     -data foo.json  → Use a different file for persistence
-//     -maxblock 5     → Limit each block to 5 transactions max
+//	Instead of hardcoding mining rules into the code, we use Go's standard
+//	"flag" package to let the user control parameters from the terminal:
 //
-//   These flags allow "changing the rules of the game" without rewriting
-//   any code. The flag package automatically parses them from the command
-//   line, provides defaults, and generates help text.
+//	  -difficulty 4   → Set PoW to require 4 leading zeros (harder mining)
+//	  -data foo.json  → Use a different file for persistence
+//	  -maxblock 5     → Limit each block to 5 transactions max
+//
+//	These flags allow "changing the rules of the game" without rewriting
+//	any code. The flag package automatically parses them from the command
+//	line, provides defaults, and generates help text.
 //
 // CONCEPT: The CLI Lifecycle (one command = one cycle)
-//   Every CLI invocation follows this pattern:
-//     1. Parse flags and identify the subcommand (FR-9, FR-7)
-//     2. Load the chain from chain.json (FR-8) — or create a new one
-//     3. Execute the subcommand (add-tx / mine / print / validate / balances)
-//     4. Save the chain back to chain.json (FR-8)
-//     5. Exit with code 0 (success) or 1 (error)
 //
-//   This load → execute → save pattern ensures persistence (FR-8) is
-//   automatic. The user never has to manually save — it happens after
-//   every single command.
+//	Every CLI invocation follows this pattern:
+//	  1. Parse flags and identify the subcommand (FR-9, FR-7)
+//	  2. Load the chain from chain.json (FR-8) — or create a new one
+//	  3. Execute the subcommand (add-tx / mine / print / validate / balances)
+//	  4. Save the chain back to chain.json (FR-8)
+//	  5. Exit with code 0 (success) or 1 (error)
+//
+//	This load → execute → save pattern ensures persistence (FR-8) is
+//	automatic. The user never has to manually save — it happens after
+//	every single command.
+//
 // =============================================================================
 package cli
 
@@ -200,15 +204,16 @@ Flags (apply to any command):
 // Usage: toychain add-tx <sender> <recipient> <amount>
 //
 // CONCEPT: Adding Transactions to the Mempool
-//   This is how users submit transactions. The transaction goes through
-//   two layers of validation:
-//     1. CLI-level: correct number of arguments, valid integer amount.
-//     2. Blockchain-level: AddTransaction() checks balances and rejects
-//        overdrafts or invalid amounts (FR-4).
 //
-//   The special sender "-" (dash) is a CLI convenience that maps to an
-//   empty string, which the ledger treats as a faucet/coinbase transaction
-//   — money created from nothing to bootstrap the system.
+//	This is how users submit transactions. The transaction goes through
+//	two layers of validation:
+//	  1. CLI-level: correct number of arguments, valid integer amount.
+//	  2. Blockchain-level: AddTransaction() checks balances and rejects
+//	     overdrafts or invalid amounts (FR-4).
+//
+//	The special sender "-" (dash) is a CLI convenience that maps to an
+//	empty string, which the ledger treats as a faucet/coinbase transaction
+//	— money created from nothing to bootstrap the system.
 func runAddTx(bc *chain.Blockchain, args []string) error {
 	if len(args) != 3 {
 		return fmt.Errorf("usage: add-tx <sender> <recipient> <amount>")
@@ -240,11 +245,12 @@ func runAddTx(bc *chain.Blockchain, args []string) error {
 // runMine handles the "mine" command (FR-5, FR-7).
 //
 // CONCEPT: Mining a Block
-//   Mining pulls transactions from the pending pool (mempool), bundles
-//   them into a new block, and runs the Proof-of-Work loop — incrementing
-//   the Nonce and recalculating the hash until it satisfies the difficulty
-//   target. The results (hash, nonce, attempts, elapsed time) are printed
-//   so the user can see how much work the computer did.
+//
+//	Mining pulls transactions from the pending pool (mempool), bundles
+//	them into a new block, and runs the Proof-of-Work loop — incrementing
+//	the Nonce and recalculating the hash until it satisfies the difficulty
+//	target. The results (hash, nonce, attempts, elapsed time) are printed
+//	so the user can see how much work the computer did.
 func runMine(bc *chain.Blockchain) error {
 	result, err := bc.MinePending()
 	if err != nil {
@@ -261,11 +267,12 @@ func runMine(bc *chain.Blockchain) error {
 // runPrint handles the "print" command — displays every block in the chain.
 //
 // CONCEPT: Inspecting the Chain
-//   This iterates through every block from genesis to tip and prints
-//   its metadata (height, timestamp, prevHash, hash, nonce) and all
-//   transactions. This is how you visually inspect the chain to see
-//   the linked-list structure: each block's "prevHash" matches the
-//   previous block's "hash."
+//
+//	This iterates through every block from genesis to tip and prints
+//	its metadata (height, timestamp, prevHash, hash, nonce) and all
+//	transactions. This is how you visually inspect the chain to see
+//	the linked-list structure: each block's "prevHash" matches the
+//	previous block's "hash."
 func runPrint(bc *chain.Blockchain) {
 	for _, b := range bc.Blocks {
 		fmt.Printf("--- block %d ---\n", b.Height)
@@ -291,11 +298,12 @@ func runPrint(bc *chain.Blockchain) {
 // runValidate handles the "validate" command (FR-6).
 //
 // CONCEPT: Running the Security Audit
-//   This triggers the full chain validation (FR-6). The Validate() method
-//   checks all five invariants (hash integrity, chain links, PoW, heights,
-//   timestamps) on every block. If the chain is valid, we print "VALID."
-//   If not, we report exactly which block failed and why — giving the user
-//   (or an auditor) precise information about where tampering occurred.
+//
+//	This triggers the full chain validation (FR-6). The Validate() method
+//	checks all five invariants (hash integrity, chain links, PoW, heights,
+//	timestamps) on every block. If the chain is valid, we print "VALID."
+//	If not, we report exactly which block failed and why — giving the user
+//	(or an auditor) precise information about where tampering occurred.
 func runValidate(bc *chain.Blockchain) {
 	result := bc.Validate()
 	if result.Valid {
@@ -303,16 +311,18 @@ func runValidate(bc *chain.Blockchain) {
 		return
 	}
 	fmt.Printf("chain is INVALID\n  first bad block: %d\n  reason: %s\n", result.FailedHeight, result.Reason)
+	os.Exit(1)
 }
 
 // runBalances handles the "balances" command (FR-4).
 //
 // CONCEPT: Deriving Balances from the Chain
-//   This doesn't read balances from a separate database — it DERIVES them
-//   by replaying every transaction in every block from genesis to tip.
-//   The chain is the single source of truth. We iterate through all blocks
-//   to find every account that ever transacted, then display their
-//   current derived balance.
+//
+//	This doesn't read balances from a separate database — it DERIVES them
+//	by replaying every transaction in every block from genesis to tip.
+//	The chain is the single source of truth. We iterate through all blocks
+//	to find every account that ever transacted, then display their
+//	current derived balance.
 func runBalances(bc *chain.Blockchain) {
 	balances := bc.Balances()
 	// Collect all unique accounts that have ever appeared in a transaction.
@@ -343,24 +353,25 @@ func runBalances(bc *chain.Blockchain) {
 // versus effort" section.
 //
 // CONCEPT: Difficulty vs. Effort Experiment
-//   This command demonstrates the EXPONENTIAL relationship between the
-//   Difficulty setting and the computational work required to mine a block.
 //
-//   For each difficulty level d, the hash must start with d leading hex zeros.
-//   Each hex digit has 16 possible values (0-f), so requiring one MORE
-//   leading zero multiplies the search space by 16. That means:
-//     - Difficulty 1: ~16 attempts on average
-//     - Difficulty 2: ~256 attempts (16²)
-//     - Difficulty 3: ~4,096 attempts (16³)
-//     - Difficulty 4: ~65,536 attempts (16⁴)
-//     - Difficulty 5: ~1,048,576 attempts (16⁵)
+//	This command demonstrates the EXPONENTIAL relationship between the
+//	Difficulty setting and the computational work required to mine a block.
 //
-//   In practice, actual numbers vary per run because mining is a RANDOM
-//   search — you might get lucky or unlucky on any given trial. But the
-//   TREND should show roughly geometric (16x) growth between levels.
+//	For each difficulty level d, the hash must start with d leading hex zeros.
+//	Each hex digit has 16 possible values (0-f), so requiring one MORE
+//	leading zero multiplies the search space by 16. That means:
+//	  - Difficulty 1: ~16 attempts on average
+//	  - Difficulty 2: ~256 attempts (16²)
+//	  - Difficulty 3: ~4,096 attempts (16³)
+//	  - Difficulty 4: ~65,536 attempts (16⁴)
+//	  - Difficulty 5: ~1,048,576 attempts (16⁵)
 //
-//   Each difficulty is tested on a FRESH chain (not the user's saved chain),
-//   so this command is completely non-destructive. Nothing is saved.
+//	In practice, actual numbers vary per run because mining is a RANDOM
+//	search — you might get lucky or unlucky on any given trial. But the
+//	TREND should show roughly geometric (16x) growth between levels.
+//
+//	Each difficulty is tested on a FRESH chain (not the user's saved chain),
+//	so this command is completely non-destructive. Nothing is saved.
 func runExperiment(args []string) {
 	maxDifficulty := 5
 	if len(args) >= 1 {
@@ -380,7 +391,11 @@ func runExperiment(args []string) {
 		// affect the user's saved chain.json at all.
 		bc := chain.New(d)
 		// Mine one block with a dummy faucet transaction.
-		result := bc.MineBlock([]ledger.Transaction{{Recipient: "experiment", Amount: 1}})
+		result, err := bc.MineBlock([]ledger.Transaction{{Recipient: "experiment", Amount: 1}})
+		if err != nil {
+			fmt.Printf("experiment failed: %v\n", err)
+			return
+		}
 		// Convert elapsed time to milliseconds for human-readable output.
 		ms := float64(result.Elapsed.Microseconds()) / 1000.0
 		// Print as a markdown table row with the first 10 chars of the hash.

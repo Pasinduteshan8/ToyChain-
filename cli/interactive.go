@@ -2,16 +2,18 @@
 // cli/interactive.go — Interactive menu-based CLI mode.
 //
 // CONCEPT: Interactive Mode
-//   When the user runs `toychain` with no arguments (or with `interactive`),
-//   this mode launches a looping numbered menu instead of requiring one-shot
-//   commands. It's more user-friendly for demos and presentations.
 //
-//   The existing one-shot CLI (e.g., `toychain add-tx alice bob 50`) still
-//   works — this is an ADDITIONAL way to interact with the chain, not a
-//   replacement.
+//	When the user runs `toychain` with no arguments (or with `interactive`),
+//	this mode launches a looping numbered menu instead of requiring one-shot
+//	commands. It's more user-friendly for demos and presentations.
 //
-//   The interactive loop follows the same lifecycle as the one-shot CLI:
-//     Load chain → Show menu → Execute choice → Save chain → Repeat
+//	The existing one-shot CLI (e.g., `toychain add-tx alice bob 50`) still
+//	works — this is an ADDITIONAL way to interact with the chain, not a
+//	replacement.
+//
+//	The interactive loop follows the same lifecycle as the one-shot CLI:
+//	  Load chain → Show menu → Execute choice → Save chain → Repeat
+//
 // =============================================================================
 package cli
 

@@ -10,7 +10,7 @@
     },
     {
       "height": 1,
-      "timestamp": 1784006201,
+      "timestamp": 1784022084,
       "transactions": [
         {
           "sender": "",
@@ -24,8 +24,8 @@
         }
       ],
       "prev_hash": "6aeab8c4bb5331541554ccef35172b511c357480854f7cd468daac3495553dac",
-      "nonce": 5094,
-      "hash": "000b7377bf162b47ec33614e1a8bdd4fb42259bf3e85ec3919ddd16e2229a54c"
+      "nonce": 21529,
+      "hash": "0007cf5500fb1aa3b2a1485217e2b8e3531f5e537a66e14d70b0e989766862fc"
     }
   ],
   "difficulty": 3,

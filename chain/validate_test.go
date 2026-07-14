@@ -73,7 +73,7 @@ func TestValidate_DetectsBrokenPrevHashLink(t *testing.T) {
 	// so it individually satisfies the PoW target again.
 	target := strings.Repeat("0", bc.Difficulty)
 	tampered := bc.Blocks[1]
-	tampered.Transactions[0].Amount = 500
+	tampered.Transactions[0].Amount = 90
 	tampered.Nonce = 0
 	tampered.Hash = tampered.CalculateHash()
 	for !strings.HasPrefix(tampered.Hash, target) {
